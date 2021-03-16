@@ -1,4 +1,4 @@
-// Copyright 2016-2020 Cisco Systems Inc
+// Copyright 2016-2021 Cisco Systems Inc
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -119,7 +119,7 @@ public struct Message : CustomStringConvertible {
     
     /// The identifier of the person who sent this message.
     public var personId: String? {
-        if let uuid = self.activity.actor?.id {
+        if let uuid = self.activity.actor?.entryUUID {
             return WebexId(type: .people, cluster: WebexId.DEFAULT_CLUSTER_ID, uuid: uuid).base64Id
         }
         return nil
