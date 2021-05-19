@@ -698,7 +698,7 @@ public class Call {
         return model.fullState?.active == true
     }
 
-    var url: String {
+    public var url: String {
         return self.model.callUrl!
     }
 
