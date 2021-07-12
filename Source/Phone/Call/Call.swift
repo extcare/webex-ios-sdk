@@ -525,19 +525,49 @@ public class Call {
         }
     }
 
-    /// The video layout for the active speaker and other attendees in the group video meeting.
+    /// The video layout for the active speaker and other attendees in the group video meeting. 
     ///
+    /// - note: videoLayout is deprecated. Use `compositedVideoLayout` instead, they do the same thing, just changed the naming
     /// - since: 2.6.0
-    public var videoLayout: MediaOption.VideoLayout? {
+    @available(*, deprecated)
+    public var videoLayout: MediaOption.CompositedVideoLayout? {
         get {
-            return self._videoLayout
+            return self._compositedVideoLayout
         }
         set {
             if let layout = newValue {
-                self._videoLayout = layout
+                self._compositedVideoLayout = layout
                 self.device.phone.layout(call: self, layout: layout)
             }
         }
+    }
+    
+    /// The composited video layout for the active speaker and other attendees in the group video meeting.
+    ///
+    /// - note: the layout just affects when `Phone.videoStreamMode` is  `composited`
+    /// - since: 2.8.0
+    public var compositedVideoLayout: MediaOption.CompositedVideoLayout? {
+        get {
+            return self._compositedVideoLayout
+        }
+        set {
+            if let layout = newValue {
+                self._compositedVideoLayout = layout
+                self.device.phone.layout(call: self, layout: layout)
+            }
+        }
+    }
+    
+    /// Set the composited video layout with callback for the active speaker and other attendees in the group video meeting.
+    ///
+    /// - parameter layout: the video layout mode.
+    /// - parameter completionHandler: A closure to be executed when completed, with error if the invocation is illegal or failed, otherwise nil.
+    ///
+    /// - note: the layout just affects when `Phone.videoStreamMode` is  `composited`
+    /// - since: 2.8.0
+    public func setCompositedVideoLayout(_ layout: MediaOption.CompositedVideoLayout, completionHandler: @escaping (Error?) -> Void) {
+        self._compositedVideoLayout = layout
+        self.device.phone.layout(call: self, layout: layout, completionHandler: completionHandler)
     }
 
     /// Call Memberships represent participants in this `Call`.
@@ -711,7 +741,7 @@ public class Call {
     static let activeSpeakerCount = 1
     private let dtmfQueue: DtmfQueue
 
-    private var _videoLayout: MediaOption.VideoLayout?
+    private var _compositedVideoLayout: MediaOption.CompositedVideoLayout?
     private var _callModel: LocusModel
     private var _callMemberships: [CallMembership]?
     private var availableStreamCount: Int = 0
@@ -802,7 +832,7 @@ public class Call {
         self.metrics.trackCallStarted()
         self.videoRenderViews = media.videoViews
         self.screenShareRenderView = media.screenShareView
-        self._videoLayout = option?.layout
+        self._compositedVideoLayout = option?.layout
         self.doCallModel(model)
     }
 
@@ -840,7 +870,7 @@ public class Call {
     /// - see: see CallStatus
     /// - since: 1.2.0
     public func answer(option: MediaOption, completionHandler: @escaping (Error?) -> Void) {
-        self._videoLayout = option.layout
+        self._compositedVideoLayout = option.layout
         self.device.phone.answer(call: self, option: option, completionHandler: completionHandler)
     }
 
@@ -1293,7 +1323,25 @@ public class Call {
 
     func updateAuxStreamCount() {
         DispatchQueue.main.async {
-            var newAvailableAuxStreamCount = min(self.memberships.filter({ $0.isMediaActive() && !$0.isSelf }).count - Call.activeSpeakerCount, self.mediaSession.auxStreamCount() - Call.activeSpeakerCount)
+            let allMemberships = self.memberships
+            var unduplicatedMemberships = [CallMembership]()
+            allMemberships.forEach { (membership) in
+                guard let associatedUrls = membership.associatedUrls else {
+                    unduplicatedMemberships.append(membership)
+                    return
+                }
+                if !allMemberships.contains(where: { return associatedUrls.contains($0.url) }) {
+                    unduplicatedMemberships.append(membership)
+                }
+            }
+            
+            let membershipCount = unduplicatedMemberships.filter({ $0.isMediaActive() && !$0.isSelf }).count
+            var newAvailableAuxStreamCount = min(membershipCount - Call.activeSpeakerCount, self.mediaSession.auxStreamCount() - Call.activeSpeakerCount)
+            
+            SDKLogger.shared.debug("Membership count =\(self.memberships.count)")
+            SDKLogger.shared.debug("Unduplicated membership count =\(membershipCount)")
+            SDKLogger.shared.debug("AuxStream count =\(self.mediaSession.auxStreamCount())")
+            
             if newAvailableAuxStreamCount < 0 {
                 newAvailableAuxStreamCount = 0
             } else if self.availableAuxStreamCount >= maxAuxStreamNumber && newAvailableAuxStreamCount > maxAuxStreamNumber {
@@ -1310,6 +1358,7 @@ public class Call {
                 for _ in 0..<diffCount {
                     if let renderView = self.auxStreamAvailable?() {
                         self.openAuxStream(view: renderView)
+                        self.availableAuxStreamCount = newAvailableAuxStreamCount
                     }
 
                 }
@@ -1319,9 +1368,8 @@ public class Call {
                         self.closeAuxStream(view: renderView)
                     }
                 }
+                self.availableAuxStreamCount = newAvailableAuxStreamCount
             }
-
-            self.availableAuxStreamCount = newAvailableAuxStreamCount
         }
     }
 
@@ -1369,8 +1417,9 @@ public class Call {
                     newMemberships.append(membership)
                 }
             }
-            //TODO participant remove event?
-            self.memberships = newMemberships
+            
+            self.memberships = newMemberships.filter { !$0.isRemoved }
+            
             for callMembershipChange in onCallMembershipChanges {
                 DispatchQueue.main.async {
                     self.onCallMembershipChanged?(callMembershipChange)
@@ -1430,6 +1479,7 @@ public class Call {
         if let membershipsArray = memberships {
             for auxStream in auxStreams {
                 if let person = auxStream.person, let membership = membershipsArray.filter({ $0.id == person.id }).first {
+                    SDKLogger.shared.debug("AuxStream MembershipID=\(person.id)")
                     auxStream.person = membership
                 }
             }

@@ -71,11 +71,11 @@ public struct CallMembership {
         return State.from(participant: self.model)
     }
     
-    /// The email address of the person in this `CallMembership`.
+    /// The displayName of the person in this `CallMembership`.
     ///
-    /// - since: 1.2.0
-    public var email: String? {
-        return self.model.person?.email
+    /// - since: 2.8.0
+    public var displayName: String? {
+        return self.model.person?.displayName
     }
     
     /// The SIP address of the person in this `CallMembership`.
@@ -139,7 +139,12 @@ public struct CallMembership {
         return (self.call.activeSpeaker?.id == self.id) 
     }
     
+    var associatedUrls: [String]? {
+        return self.model.devices?.compactMap {$0.intent?.associatedWith}
+    }
+    
     let id: String
+    let url: String
     
     public let isSelf: Bool
     
@@ -159,12 +164,17 @@ public struct CallMembership {
     private let call: Call
     
     private var participantModel: ParticipantModel
+    
+    var isRemoved: Bool {
+        return self.model.isRemoved
+    }
 
     /// Constructs a new `CallMembership`.
     ///
     /// - since: 1.2.0
     init(participant: ParticipantModel, call: Call) {
         self.id = participant.id ?? ""
+        self.url = participant.url ?? ""
         self.call = call
         self.isSelf = participant.id == call.model.myselfId
         self.isInitiator = participant.isCreator ?? false
