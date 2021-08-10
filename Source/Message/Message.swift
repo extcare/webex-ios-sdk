@@ -432,6 +432,10 @@ public struct RemoteFile {
         }
     }
     
+    public var url: String? {
+        return self.model.url
+    }
+    
     /// The display name of the remote file.
     public var displayName: String? {
         return self.model.displayName
@@ -452,6 +456,10 @@ public struct RemoteFile {
             return Thumbnail(model: model)
         }
         return nil
+    }
+    
+    public var remoteURL: String? {
+        return model.url
     }
     
     let model: FileModel
