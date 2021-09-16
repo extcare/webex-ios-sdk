@@ -202,7 +202,7 @@ class CallClient {
                 .queue(queue)
                 .build()
 
-        request.responseObject(handleLocusOnlySDPResponseFixed(completionHandler: completionHandler))
+        request.responseObject(handleLocusOnlySDPResponse(completionHandler: completionHandler))
     }
 
     func layout(_ participantUrl: String, by deviceUrl: String, layout: MediaOption.CompositedVideoLayout, queue: DispatchQueue, completionHandler: @escaping (ServiceResponse<LocusModel>) -> Void) {
@@ -285,29 +285,6 @@ class CallClient {
     }
 
     private func handleLocusOnlySDPResponse(option: MediaOption? = nil, queue: DispatchQueue? = nil, completionHandler: @escaping (ServiceResponse<LocusModel>) -> Void) -> (ServiceResponse<LocusMediaResponseModel>) -> Void {
-        return {
-            result in
-            switch result.result {
-            case .success(let model):
-                if var locus = model.locus {
-                    if let media = model.mediaConnections {
-                        locus.mediaConnections = media
-                    }
-                    if let layout = option?.layout, let url = locus.myself?.url, let device = locus.myself?.deviceUrl  {
-                        self.layout(url, by: device, layout: layout, queue: queue ?? DispatchQueue.main) { _ in
-                            completionHandler(ServiceResponse(result.response, Result.success(locus)))
-                        }
-                        return;
-                    }
-                    completionHandler(ServiceResponse(result.response, Result.success(locus)))
-                }
-            case .failure(let error):
-                completionHandler(ServiceResponse(result.response, Result.failure(error)))
-            }
-        }
-    }
-    
-    private func handleLocusOnlySDPResponseFixed(option: MediaOption? = nil, queue: DispatchQueue? = nil, completionHandler: @escaping (ServiceResponse<LocusModel>) -> Void) -> (ServiceResponse<LocusMediaResponseModel>) -> Void {
         return {
             result in
             switch result.result {
