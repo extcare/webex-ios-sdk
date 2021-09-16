@@ -31,6 +31,9 @@ struct LocusMediaResponseModel: Mappable {
 
     mutating func mapping(map: Map) {
         locus <- map["locus"]
+        if locus == nil {
+            SDKLogger.shared.warn("LocusModel is nil after parsing: \(String(describing: map.JSON["locus"]))")
+        }
         mediaConnections <- map["mediaConnections"]
     }
 }
