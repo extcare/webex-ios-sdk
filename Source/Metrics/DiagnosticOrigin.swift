@@ -41,24 +41,30 @@ struct DiagnosticOriginTime: Mappable {
 
 struct ClientInfo: Mappable {
     private(set) var clientType: String?
+    private(set) var subClientType: String?
     private(set) var os: String?
     private(set) var osVersion: String?
     private(set) var localIP: String?
+    private(set) var clientVersion: String?
 
-    init(clientType: String, os: String, osVersion: String, localIP: String) {
+    init(clientType: String, subClientType: String, os: String, osVersion: String, localIP: String, clientVersion: String) {
         self.clientType = clientType
+        self.subClientType = subClientType
         self.os = os
         self.osVersion = osVersion
         self.localIP = localIP
+        self.clientVersion = clientVersion
     }
 
     init?(map: Map) {}
 
     mutating func mapping(map: Map) {
         self.clientType <- map["clientType"]
+        self.subClientType <- map["subClientType"]
         self.os <- map["os"]
         self.osVersion <- map["osVersion"]
         self.localIP <- map["localIP"]
+        self.clientVersion <- map["clientVersion"]
     }
 }
 
